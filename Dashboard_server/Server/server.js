@@ -10,7 +10,6 @@ const MOXFQ = require("./models/moxfq_Schema")
 const SF_36 = require("./models/sf_36")
 const Image = require("./models/image_model")
 const Data = require('./models/dataShema')
-const User = require('./models/userSchema')
 const PatientInfo = require('./models/patientInfo')
 const cors = require("cors")
 const app = express();
@@ -31,67 +30,46 @@ app.use(bodyparser.json());
 app.use(cors());
 
 
-app.get('/register', async (req, res) => {
-
-    try {
-        const reg = await User.find();
-        res.status(200).send(reg);
-    } catch (error) {
-        res.status(400).send(error.message)
-    }
-})
-
-app.post("/api/register", async (req, res) => {
-    const { name, username, password } = req.body;
-    if (!name || !username || !password) {
-        return res.status(400).json({ message: "Username and password are required" });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const customer = new User({ name, username, password: hashedPassword });
-    try {
-        await customer.save();
-        res.json({ message: "User Saved Successfully" });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Error Occurred" });
-    }
-});
-
 app.post("/api/login", async (req, res) => {
-    const { username, password } = req.body;
-    const customer = await User.findOne({ username });
+  const { email, password } = req.body;
+  const customer = await Doctor.findOne({ email });
 
-    if (!customer) {
-        return res.status(401).json({ message: "Authentication failed! User doesnot exist" });
-    }
+  if (!customer) {
+      return res.status(401).json({ message: "Authentication failed! User doesnot exist" });
+  }
 
-    const passwordMatch = await bcrypt.compare(password, customer.password);
+  const passwordMatch = await bcrypt.compare(password, customer.password);
 
-    if (!passwordMatch) {
-        return res.status(401).json({ message: "Authentication failed! wrong Password" });
-    }
+  if (!passwordMatch) {
+      return res.status(401).json({ message: "Authentication failed! wrong Password" });
+  }
 
-    const token = jwt.sign(
-        { username: customer.username, role: "admin" },
-        SECRET_KEY,
-        { expiresIn: "1h" });
+  const token = jwt.sign(
+      { email: customer.email, role: "admin" },
+      SECRET_KEY,
+      { expiresIn: "3h" });
 
-    res.json({ token });
+  res.json({ token });
 });
-
 
 // Doctor Schema:
 
-app.post('/doctor', async (req, res) => {
-    const doctor = new Doctor(req.body);
-    try {
-        const savedDoctor = await doctor.save();
-        res.status(200).send(savedDoctor);
-    } catch (error) {
-        res.status(400).send(error.message)
-    }
-})
+app.post("/doctor", async (req, res) => {
+  const { userid, firstname, lastname, phone, email, password } = req.body;
+  if (!userid || !firstname || !lastname || !phone || !email || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+  const customer = new Doctor({ userid, firstname, lastname, phone, email, password: hashedPassword });
+  try {
+      await customer.save();
+      res.json({ message: "User Saved Successfully" });
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Error Occurred" });
+  }
+});
 
 app.get('/doctors', async (req, res) => {
 
@@ -102,6 +80,16 @@ app.get('/doctors', async (req, res) => {
         res.status(400).send(error.message)
     }
 })
+
+app.get('/doctor/:email', async (req, res) => {
+  const email = req.params.email;
+  try {
+    const doc = await Doctor.findOne({ email: email });
+    res.status(200).json(doc);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
 
 app.get('/getDoctor/:id', async (req, res) => {
     const doctorId = req.params.id;
@@ -337,63 +325,6 @@ app.delete("/image/:email", async (req, res) => {
       }
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-// diagnose
-
-app.post('/saveData', (req, res) => {
-    const { email, tableData } = req.body; // Extract email and tableData from the request body
-
-    // Create an array of data entries for each row in tableData
-    const dataToSave = tableData.map(row => ({
-        email, // Include the email in the data to be saved
-        code: row.code,
-        condition: row.condition,
-        userColumn1: row.userColumn1,
-        userColumn2: row.userColumn2,
-        userColumn3: row.userColumn3,
-        userColumn4: row.userColumn4,
-        userColumn5: row.userColumn5,
-        userColumn6: row.userColumn6,
-    }));
-
-    Data.insertMany(dataToSave)
-        .then(() => {
-            console.log('Data saved to MongoDB');
-            res.status(200).json({ message: 'Data saved to MongoDB' });
-        })
-        .catch(err => {
-            console.error('Error saving data to MongoDB:', err);
-            res.status(500).json({ error: 'Error saving data to MongoDB' });
-        });
-});
-
-app.delete("/saveData/:email", async (req, res) => {
-    try {
-      const email = req.params.email;
-      const deletedata = await Data.deleteMany({ email: email });
-  
-      if (deletedata.deletedCount > 0) {
-        res.status(200).json({ message: "Data deleted successfully" });
-      } else {
-        res.status(404).json({ message: "Data not found" });
-      }
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-app.get('/getSaveDatas', async (req, res) => {
-    const email = req.query.email; // Get the email from the query parameters
-  
-    try {
-      // Use Mongoose to find documents matching the email
-      const data = await Data.find({ email }).exec();
-  
-      res.json(data);
-    } catch (error) {
-      res.status(500).json({ error: 'An error occurred while querying the data.' });
     }
   });
 
