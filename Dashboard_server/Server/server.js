@@ -9,7 +9,7 @@ const PCS = require("./models/pcsSchema")
 const MOXFQ = require("./models/moxfq_Schema")
 const SF_36 = require("./models/sf_36")
 const Image = require("./models/image_model")
-const Data = require('./models/dataShema')
+const Data = require("./models/dataSchema")
 const PatientInfo = require('./models/patientInfo')
 const cors = require("cors")
 const app = express();
@@ -362,6 +362,35 @@ app.delete("/patientinfo/:email", async (req, res) => {
       res.status(500).json({ message: "Internal server error" });
     }
   });
+
+  app.post('/data', async (req, res) => {
+    const data = new Data(req.body);
+    try {
+        const saved = await data.save();
+        res.status(200).send(saved);
+    } catch (error) {
+        res.status(400).send(error.message);
+    }
+});
+
+app.get('/datas', async (req, res) => {
+
+  try {
+      const datas = await Data.find();
+      res.status(200).send(datas);
+  } catch (error) {
+      res.status(400).send(error.message)
+  }
+})
+app.get('/Data', async (req, res) => {
+  try {
+      const email = req.query.email;
+      const detail = await Data.find({ email: email });
+      res.status(200).send(detail);
+  } catch (error) {
+      res.status(400).send(error.message);
+  }
+});
 
 
 app.listen(PORT, () => {
