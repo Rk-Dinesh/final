@@ -116,7 +116,7 @@ app.put('/updateDoctor/:id', async (req, res) => {
             lastname: req.body.lastname,
             email: req.body.email,
             phone: req.body.phone,
-            password: req.body.password,
+            //password: req.body.password,
         });
         res.json(user);
     } catch (err) {
@@ -176,6 +176,36 @@ app.delete("/patients/:email", async (req, res) => {
       res.status(500).json({ message: "Internal server error" });
     }
   });
+
+  
+app.put('/updatePassword/:email', async (req, res) => {
+    const email = req.params.email;
+    const newPassword = req.body.password;
+
+    try {
+      
+        const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+        const updatedDoctor = await Doctor.findOneAndUpdate(
+            { email: email },
+            {
+                $set: {
+                    password: newPasswordHash,
+                }
+            },
+            { new: true }
+        );
+
+        if (!updatedDoctor) {
+            return res.status(404).json({ message: 'Doctor not found' });
+        }
+
+        res.json(updatedDoctor);
+    } catch (err) {
+        res.status(500).json({ message: 'An error occurred while updating the doctor', error: err.message });
+    }
+});
+
 
 //PCS Schema
 
